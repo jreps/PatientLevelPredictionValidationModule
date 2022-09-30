@@ -14,21 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-# validation specific
-getFinalFolder <- function(modelLocation){
-  splitLoc <- strsplit(x = modelLocation, split = '/')[[1]]
-  return(splitLoc[length(splitLoc)])
-}
-# change to Analysis_ if not appended
-checkAnalysisAppend <- function(modelFolder){
-  startString <- substring(modelFolder, first = 1, last = 9)
-  if(startString != 'Analysis_'){
-    modelFolder <- paste0('Analysis_', modelFolder)
-  }
-  return(modelFolder)
-}
-
 # Module methods -------------------------
 getModuleInfo <- function() {
   checkmate::assert_file_exists("MetaData.json")
@@ -134,44 +119,52 @@ execute <- function(jobContext) {
     settings = jobContext$settings
     )
   
-  # check the model locations are valid and move into work folder
-  modelWorkFolder <- file.path(workFolder, 'models')
-  if(!dir.exists(modelWorkFolder)){
-    dir.create(modelWorkFolder, recursive = T)
-  }
+  # check the model locations are valid and apply model
+
   modelLocationList <- jobContext$settings$modelLocationList
+  # TODO create function to get locations from github/package settings
+  
+  modelInd <- 0
   for(modelLocation in modelLocationList){   
+    modelInd <- modelInd + 1
     plpModel <- tryCatch(
       {PatientLevelPrediction::loadPlpModel(modelLocation)},
       error = function(e){ParallelLogger::logInfo(e); return(NULL)}
     )
     if(!is.null(plpModel)){
-      # save validate models to work directory
-      modelFolder <- getFinalFolder(modelLocation)
-      # change to Analysis_ if not appended
-      modelFolder <- checkAnalysisAppend(modelFolder)
-      
-      # make sure not model with the name exists in the workFolder
-      if(modelFolder %in% dir(modelWorkFolder, pattern = 'Analysis_')){
-        nameExists <- T
-        while(nameExists){
-          modelFolder <- paste0(modelFolder,'_', sample(10000), 1)
-          nameExists <- modelFolder %in% dir(modelWorkFolder, pattern = 'Analysis_')
-        }
-      }
-      
-      PatientLevelPrediction::savePlpModel(file.path(modelWorkFolder, modelFolder))
+
+      # append model ind to ensure analysis id is unique
+      plpModel$trainDetails$analysisId <- paste0(plpModel$trainDetails$analysisId, '_', modelInd)
+   
+      PatientLevelPrediction::externalValidateDbPlp(
+        plpModel = plpModel, 
+        validationDatabaseDetails = databaseDetails, 
+        validationRestrictPlpDataSettings = jobContext$settings$restrictPlpDataSettings, 
+        settings = jobContext$settings$validationSettings, 
+        #logSettings = , 
+        outputFolder = workFolder
+      )
+  
+    } else{
+      ParallelLogger::logInfo(paste0('Issue loading model at ', modelLocation))
     }
   }
-      
-  PatientLevelPrediction::validateMultiplePlp(
-    analysesLocation = modelWorkFolder, 
-    validationDatabaseDetails = databaseDetails, 
-    validationRestrictPlpDataSettings = jobContext$settings$restrictPlpDataSettings, 
-    recalibrate = jobContext$settings$recalibrate, 
-    cohortDefinitions = cohortDefinitionSet, 
-    saveDirectory = workFolder
-  )
+
+# move results into database
+for(validationDatabaseDetail in databaseDetails){
+  tryCatch({
+    insertResultsToSqlite(
+      resultLocation = file.path(workFolder, validationDatabaseDetail$cdmDatabaseName), 
+      cohortDefinitions = cohortDefinitionSet,
+      databaseList = createDatabaseList(
+        cdmDatabaseSchemas = validationDatabaseDetail$cdmDatabaseSchema,
+        cdmDatabaseNames = validationDatabaseDetail$cdmDatabaseName,
+        databaseRefIds = validationDatabaseDetail$cdmDatabaseId 
+      ),
+      sqliteLocation = file.path(workFolder,'sqlite')
+    )
+  })
+}
  
 
   # Export the results
