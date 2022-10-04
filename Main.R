@@ -122,7 +122,6 @@ execute <- function(jobContext) {
   # check the model locations are valid and apply model
 
   modelLocationList <- jobContext$settings$modelLocationList
-  # TODO create function to get locations from github/package settings
   
   modelInd <- 0
   for(modelLocation in modelLocationList){   
@@ -184,7 +183,7 @@ for(validationDatabaseDetail in databaseDetails){
       tempEmulationSchema = NULL
     ), 
     csvFolder = file.path(workFolder, 'results'),
-    fileAppend = moduleInfo$TablePrefix
+    fileAppend = NULL
   )
   
   # Zip the results
