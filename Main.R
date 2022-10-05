@@ -155,7 +155,7 @@ for(validationDatabaseDetail in databaseDetails){
     PatientLevelPrediction::insertResultsToSqlite(
       resultLocation = file.path(workFolder, validationDatabaseDetail$cdmDatabaseName), 
       cohortDefinitions = cohortDefinitionSet,
-      databaseList = createDatabaseList(
+      databaseList = PatientLevelPrediction::createDatabaseList(
         cdmDatabaseSchemas = validationDatabaseDetail$cdmDatabaseSchema,
         cdmDatabaseNames = validationDatabaseDetail$cdmDatabaseName,
         databaseRefIds = validationDatabaseDetail$cdmDatabaseId 
