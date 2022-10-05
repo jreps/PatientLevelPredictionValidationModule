@@ -152,7 +152,7 @@ execute <- function(jobContext) {
 # move results into database
 for(validationDatabaseDetail in databaseDetails){
   tryCatch({
-    insertResultsToSqlite(
+    PatientLevelPrediction::insertResultsToSqlite(
       resultLocation = file.path(workFolder, validationDatabaseDetail$cdmDatabaseName), 
       cohortDefinitions = cohortDefinitionSet,
       databaseList = createDatabaseList(

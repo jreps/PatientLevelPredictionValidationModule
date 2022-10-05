@@ -16,7 +16,7 @@ createPatientLevelPredictionValidationModuleSpecifications <- function(
   
   specifications <- list(
     module = "PatientLevelPredictionValidationModule",
-    version = "0.0.5",
+    version = "0.0.6",
     remoteRepo = "github.com",
     remoteUsername = "jreps",
     settings = list(
